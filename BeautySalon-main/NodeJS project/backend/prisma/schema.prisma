@@ -1,0 +1,118 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: http://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: http://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Users {
+  userID        Int           @id @default(autoincrement())
+  name          String
+  phone         String?
+  email         String        @unique
+  password      String
+  role          Roles         @default(USER)
+  reviews       Reviews[]
+  registrations Booking[] // Переименовано на Booking, чтобы отражать суть
+}
+
+enum Roles {
+  ADMIN
+  USER
+}
+
+model ServiceCategory {
+  categoryID Int                   @id @default(autoincrement())
+  name       String                @unique
+  servics    Servics[]
+  employees  EmployeesServiceCategories[]
+}
+
+model Servics {
+  serviceID   Int                   @id @default(autoincrement())
+  name        String                @unique
+  description String?
+  price       Decimal               @default(0.00)
+  duration    Int                   @default(60) // Добавлено поле duration в минутах
+  categoryID  Int?
+  category    ServiceCategory?      @relation(fields: [categoryID], references: [categoryID], onDelete: SetNull, onUpdate: Cascade)
+  employees   EmployeesServices[]
+  bookings    Booking[]             // Добавлена связь с таблицей Booking
+}
+
+model Employees {
+  employeeID        Int                       @id @default(autoincrement())
+  name              String
+  surname           String
+  email             String                    @unique
+  services          EmployeesServices[]
+  serviceCategories EmployeesServiceCategories[]
+  reviews           Reviews[]
+  bookings          Booking[]                 // Переименовано на Booking
+  photo             Bytes?
+  availability      Availability[]            // Добавлена связь с таблицей Availability
+}
+
+model EmployeesServices {
+  employeeID Int
+  serviceID  Int
+
+  employee Employees @relation(fields: [employeeID], references: [employeeID], onDelete: Cascade)
+  service  Servics   @relation(fields: [serviceID], references: [serviceID], onDelete: Cascade)
+
+  @@id([employeeID, serviceID])
+}
+
+model EmployeesServiceCategories {
+  employeeID        Int
+  serviceCategoryID Int
+
+  employee        Employees         @relation(fields: [employeeID], references: [employeeID], onDelete: Cascade)
+  serviceCategory ServiceCategory @relation(fields: [serviceCategoryID], references: [categoryID], onDelete: Cascade)
+
+  @@id([employeeID, serviceCategoryID])
+}
+
+model Booking { // Переименовано из Registration и обновлена структура
+  bookingID   Int       @id @default(autoincrement())
+  userID      Int
+  employeeID  Int
+  serviceID   Int
+  startTime   DateTime  @db.Timestamptz
+  endTime     DateTime  @db.Timestamptz
+  notes       String?
+
+  user     Users     @relation(fields: [userID], references: [userID], onDelete: Cascade)
+  employee Employees @relation(fields: [employeeID], references: [employeeID], onDelete: Cascade)
+  service  Servics   @relation(fields: [serviceID], references: [serviceID], onDelete: Cascade)
+}
+
+model Reviews {
+  reviewID   Int      @id @default(autoincrement())
+  userID     Int
+  employeeID Int
+  rating     Int
+  comm       String?
+
+  user     Users     @relation(fields: [userID], references: [userID], onDelete: Cascade)
+  employee Employees @relation(fields: [employeeID], references: [employeeID], onDelete: Cascade)
+}
+
+// Новая модель для хранения интервалов доступности сотрудников
+model Availability {
+  availabilityID Int      @id @default(autoincrement())
+  employeeID     Int
+  date           DateTime @db.Timestamptz
+  startTime      DateTime @db.Timestamptz
+  endTime        DateTime @db.Timestamptz
+
+  employee Employees @relation(fields: [employeeID], references: [employeeID], onDelete: Cascade)
+}

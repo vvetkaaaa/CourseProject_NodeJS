@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: qwerty1234
+      POSTGRES_DB: courseTest
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db-backup:/docker-entrypoint-initdb.d
+
+  backend:
+    build:
+      context: ./backend
+      args:
+        DATABASE_URL: postgresql://postgres:qwerty1234@db:5432/courseTest
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:qwerty1234@db:5432/courseTest
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+
+volumes:
+  pgdata:
